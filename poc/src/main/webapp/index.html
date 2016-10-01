@@ -1,0 +1,107 @@
+<html>
+
+<head>
+<script
+	src="https://ajax.googleapis.com/ajax/libs/angularjs/1.3.14/angular.min.js"></script>
+</head>
+
+<body ng-app="myApp">
+
+	<div ng-controller="myCtrl">
+		<input type="file" file-model="myFile" />
+		<button ng-click="uploadFile()">upload me</button>
+		
+		<select ng-model='profileId' ng-options="profile.firstName for profile in profiles" ng-change='dropdownchange()'></select>
+		<img style='max-height:100px;max-width:100px' data-ng-src="data:image/png;base64,{{profileId.profilePic}}">
+		
+		<div></div>
+	</div>
+	
+	<script>
+        var myApp = angular.module('myApp', []);
+
+        myApp.directive('fileModel', ['$parse', function ($parse) {
+            return {
+                restrict: 'A',
+                link: function (scope, element, attrs) {
+                    var model = $parse(attrs.fileModel);
+                    var modelSetter = model.assign;
+
+                    element.bind('change', function () {
+                        scope.$apply(function () {
+                            if (element[0].files[0].type != 'image/png') {
+                                element[0].value = '';
+                                element[0].files[0] = '';
+                                scope.myFile = '';
+
+                                //alert();
+                                return;
+                            } else {
+
+                                modelSetter(scope, element[0].files[0]);
+
+                            }
+
+                        });
+                    });
+                }
+            };
+        }]);
+
+        myApp.service('fileUpload', ['$http','$q', function ($http,$q) {
+        	var deferred=$q.defer();
+        	
+        	
+            this.getUserNames = function () {
+                $http.get('/poc/getProfiles')
+                .success(function (responseData) {
+                	deferred.resolve(responseData);
+                })
+
+                .error(function () {});
+			return deferred.promise;
+            }
+            this.uploadFileToUrl = function (file, uploadUrl) {
+            	 var fd = new FormData();
+                // fd.append('file', fd);
+                 fd.append('description', "Nagesh"+Math.random());
+                 
+                fd.append('file', file);
+                 $http.post(uploadUrl, fd, {
+                   transformRequest: angular.identity,
+                    headers: {'Content-Type': undefined} 
+                 })
+                 .success(function () {})
+
+                .error(function () {});
+            }
+         }]);
+
+        myApp.controller('myCtrl', ['$scope', 'fileUpload', function ($scope, fileUpload) {
+        	fileUpload.getUserNames().then(function(data){
+        		$scope.profiles=data;
+        		debugger;
+        	});
+        	$scope.dropdownchange=function(){
+        		$scope.src="data:image/png;base64,"+$scope.profileId.profilePic;
+        		
+/*         		document.getElementById("ItemPreview").src = "data:image/png;base64," + YourByte; */
+        	}
+            $scope.uploadFile = function () {
+                var file = $scope.myFile;
+                if (!file) {
+                    return;
+                }
+                
+                console.dir(file);
+				/* var payload={'userId':'Nagesh123'+Math.random(),'profilePic':file};
+                 */
+                 var uploadUrl = "/poc/addProfile";
+                fileUpload.uploadFileToUrl(file, uploadUrl);
+            };
+         }]);
+    </script>
+
+</body>
+
+</html>
